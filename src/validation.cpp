@@ -3156,7 +3156,8 @@ bool IsWitnessLockedIn(const CBlockIndex* pindexPrev, const Consensus::Params& p
 bool CheckBIP148(const CBlockIndex* pindex, const Consensus::Params& params)
 {
     int64_t nMedianTimePast = pindex->GetMedianTimePast();
-    if ( (nMedianTimePast >= 1501545600) &&  // Tue 01 Aug 2017 00:00:00 UTC
+    if ( ((nMedianTimePast >= 1501545600) ||  // Tue 01 Aug 2017 00:00:00 UTC
+          (pindex->nHeight >= 477120    )) &&   // BIP91 activation height
          (nMedianTimePast <= 1510704000) &&  // Wed 15 Nov 2017 00:00:00 UTC
          (!IsWitnessLockedIn(pindex->pprev, params) &&  // Segwit is not locked in
           !IsWitnessEnabled(pindex->pprev, params)) )   // and is not active.
