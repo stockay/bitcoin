@@ -1,20 +1,16 @@
 (note: this is a temporary file, to be added-to by anybody, and moved to
 release-notes at release time)
 
-Bitcoin Core version *0.15.0* is now available from:
+Bitcoin Knots version *0.15.0.knots2017FIXME* is now available from:
 
-  <https://bitcoin.org/bin/bitcoin-core-0.15.0/>
+  <https://bitcoinknots.org/files/0.15.x/0.15.0.knots2017FIXME/>
 
 This is a new major version release, including new features, various bugfixes
 and performance improvements, as well as updated translations.
 
 Please report bugs using the issue tracker at GitHub:
 
-  <https://github.com/bitcoin/bitcoin/issues>
-
-To receive security and update notifications, please subscribe to:
-
-  <https://bitcoincore.org/en/list/announcements/join/>
+  <https://github.com/bitcoinknots/bitcoin/issues>
 
 How to Upgrade
 ==============
@@ -47,10 +43,10 @@ processing the entire blockchain.
 Compatibility
 ==============
 
-Bitcoin Core is extensively tested on multiple operating systems using
-the Linux kernel, macOS 10.8+, and Windows Vista and later. Windows XP is not supported.
+Bitcoin Knots is supported on multiple operating systems using the Linux kernel,
+macOS 10.8+, and Windows Vista and later. Windows XP is not supported.
 
-Bitcoin Core should also work on most other Unix-like systems but is not
+Bitcoin Knots should also work on most other Unix-like systems but is not
 frequently tested on them.
 
 Notable changes
@@ -114,56 +110,39 @@ Fee estimation has been significantly improved in version 0.15, with more accura
     - The `nblocks` argument has been renamed to `conf_target` (to be consistent with other RPC methods).
     - An `estimate_mode` argument has been added. This argument takes one of the following strings: `CONSERVATIVE`, `ECONOMICAL` or `UNSET` (which defaults to `CONSERVATIVE`).
     - The RPC return object now contains an `errors` member, which returns errors encountered during processing.
-    - If Bitcoin Core has not been running for long enough and has not seen enough blocks or transactions to produce an accurate fee estimation, an error will be returned (previously a value of -1 was used to indicate an error, which could be confused for a feerate).
+    - If Bitcoin Knots has not been running for long enough and has not seen enough blocks or transactions to produce an accurate fee estimation, an error will be returned (previously a value of -1 was used to indicate an error, which could be confused for a feerate).
 - A new `estimaterawfee` RPC is added to provide raw fee data. External clients can query and use this data in their own fee estimation logic.
 
-Multi-wallet support
---------------------
+Multi-wallet endpoint support
+-----------------------------
 
-Bitcoin Core now supports loading multiple, separate wallets (See [PR 8694](https://github.com/bitcoin/bitcoin/pull/8694), [PR 10849](https://github.com/bitcoin/bitcoin/pull/10849)). The wallets are completely separated, with individual balances, keys and received transactions.
+Bitcoin Knots has supported loading multiple, separate wallets since
+v0.13.1.knots20161027. However, due to the RPC API, RPC users could only access
+a single wallet at a time - accessing multiple wallets over RPC required the
+use of multiple RPC users. 0.15.0 adds support for specifying the wallet by
+name using a URI path for the RPC endpoint.
 
-Multi-wallet is enabled by using more than one `-wallet` argument when starting Bitcoin, either on the command line or in the Bitcoin config file.
+To do this, HTTP RPC requests should be send to the `<RPC IP address>:<RPC port>/wallet/<wallet name>/` endpoint, for example `127.0.0.1:8332/wallet/wallet1.dat/`.
 
-**In Bitcoin-Qt, only the first wallet will be displayed and accessible for creating and signing transactions.** GUI selectable multiple wallets will be supported in a future version. However, even in 0.15 other loaded wallets will remain synchronized to the node's current tip in the background. This can be useful if running a pruned node, since loading a wallet where the most recent sync is beyond the pruned height results in having to download and revalidate the whole blockchain. Continuing to synchronize all wallets in the background avoids this problem.
+`bitcoin-cli` commands should be run with a `-rpcwallet` option, for example `bitcoin-cli -rpcwallet=wallet1.dat getbalance`.
 
-Bitcoin Core 0.15.0 contains the following changes to the RPC interface and `bitcoin-cli` for multi-wallet:
+Additionally, a new `listwallets` RPC method is added to display which wallets are currently loaded. The names returned by this method are the same as those used in the HTTP endpoint and for the `rpcwallet` argument.
 
-* When running Bitcoin Core with a single wallet, there are **no** changes to the RPC interface or `bitcoin-cli`. All RPC calls and `bitcoin-cli` commands continue to work as before.
-* When running Bitcoin Core with multi-wallet, all *node-level* RPC methods continue to work as before. HTTP RPC requests should be send to the normal `<RPC IP address>:<RPC port>/` endpoint, and `bitcoin-cli` commands should be run as before. A *node-level* RPC method is any method which does not require access to the wallet.
-* When running Bitcoin Core with multi-wallet, *wallet-level* RPC methods must specify the wallet for which they're intended in every request. HTTP RPC requests should be send to the `<RPC IP address>:<RPC port>/wallet/<wallet name>/` endpoint, for example `127.0.0.1:8332/wallet/wallet1.dat/`. `bitcoin-cli` commands should be run with a `-rpcwallet` option, for example `bitcoin-cli -rpcwallet=wallet1.dat getbalance`.
-* A new *node-level* `listwallets` RPC method is added to display which wallets are currently loaded. The names returned by this method are the same as those used in the HTTP endpoint and for the `rpcwallet` argument.
+This new wallet endpoint interface should be considered unstable for version 0.15.0, and there may backwards-incompatible changes in future versions.
 
-Note that while multi-wallet is now fully supported, the RPC multi-wallet interface should be considered unstable for version 0.15.0, and there may backwards-incompatible changes in future versions.
+The original RPC user based wallet selection continues to work as well, independently from the new endpoint support. `rpcauth` users that specify a specific wallet are prohibited from using endpoints to access others. However, note that (at least in this version) `listwallets` will always list all wallets on the node, even if access to them has been limited!
 
-Replace-by-fee control in the GUI
----------------------------------
+Removal of no-fee transactions
+------------------------------
 
-Bitcoin Core has supported creating opt-in replace-by-fee (RBF) transactions
-since version 0.12.0, and since version 0.14.0 has included a `bumpfee` RPC method to
-replace unconfirmed opt-in RBF transactions with a new transaction that pays
-a higher fee.
+In previous versions of Bitcoin Knots, transactions without a fee would be allowed to be relayed if the node's memory pool was empty and the age and value of UTXOs they spent (coin age priority) was sufficiently high.
 
-In version 0.15, creating an opt-in RBF transaction and replacing the unconfirmed
-transaction with a higher-fee transaction are both supported in the GUI (See [PR 9592](https://github.com/bitcoin/bitcoin/pull/9592)).
-
-Removal of Coin Age Priority
-----------------------------
-
-In previous versions of Bitcoin Core, a portion of each block could be reserved for transactions based on the age and value of UTXOs they spent. This concept (Coin Age Priority) is a policy choice by miners, and there are no consensus rules around the inclusion of Coin Age Priority transactions in blocks. In practice, only a few miners continue to use Coin Age Priority for transaction selection in blocks. Bitcoin Core 0.15 removes all remaining support for Coin Age Priority (See [PR 9602](https://github.com/bitcoin/bitcoin/pull/9602)). This has the following implications:
-
-- The concept of *free transactions* has been removed. High Coin Age Priority transactions would previously be allowed to be relayed even if they didn't attach a miner fee. This is no longer possible since there is no concept of Coin Age Priority. The `-limitfreerelay` and `-relaypriority` options which controlled relay of free transactions have therefore been removed.
-- The `-sendfreetransactions` option has been removed, since almost all miners do not include transactions which do not attach a transaction fee.
-- The `-blockprioritysize` option has been removed.
-- The `estimatepriority` and `estimatesmartpriority` RPCs have been removed.
-- The `getmempoolancestors`, `getmempooldescendants`, `getmempoolentry` and `getrawmempool` RPCs no longer return `startingpriority` and `currentpriority`.
-- The `prioritisetransaction` RPC no longer takes a `priority_delta` argument, which is replaced by a `dummy` argument for backwards compatibility with clients using positional arguments. The RPC is still used to change the apparent fee-rate of the transaction by using the `fee_delta` argument.
-- `-minrelaytxfee` can now be set to 0. If `minrelaytxfee` is set, then fees smaller than `minrelaytxfee` (per kB) are rejected from relaying, mining and transaction creation. This defaults to 1000 satoshi/kB.
-- The `-printpriority` option has been updated to only output the fee rate and hash of transactions included in a block by the mining code.
+For a long time now, this has been effectively useless, due to wide adoption of Bitcoin as well as regular spam attacks. Since the code no longer has a purpose, support for no-fee transactions has been removed.
 
 Mempool Persistence Across Restarts
 -----------------------------------
 
-Version 0.14 introduced mempool persistence across restarts (the mempool is saved to a `mempool.dat` file in the data directory prior to shutdown and restores the mempool when the node is restarted). Version 0.15 allows this feature to be switched on or off using the `-persistmempool` command-line option (See [PR 9966](https://github.com/bitcoin/bitcoin/pull/9966)). By default, the option is set to true, and the mempool is saved on shutdown and reloaded on startup. If set to false, the `mempool.dat` file will not be loaded on startup or saved on shutdown.
+Version 0.13.1.knots20161212 introduced mempool persistence across restarts (the mempool is saved to a `mempool.dat` file in the data directory prior to shutdown and restores the mempool when the node is restarted). Version 0.15 allows this feature to be switched on or off using the `-persistmempool` command-line option (See [PR 9966](https://github.com/bitcoin/bitcoin/pull/9966)). By default, the option is set to true, and the mempool is saved on shutdown and reloaded on startup. If set to false, the `mempool.dat` file will neither be loaded on startup nor saved on shutdown.
 
 New RPC methods
 ---------------
@@ -176,14 +155,16 @@ Version 0.15 introduces several new RPC methods:
 - `getchaintxstats` returns statistics about the total number and rate of transactions
   in the chain (See [PR 9733](https://github.com/bitcoin/bitcoin/pull/9733)).
 - `listwallets` lists wallets which are currently loaded. See the *Multi-wallet* section
-  of these release notes for full details (See [Multi-wallet support](#multi-wallet-support)).
+  of these release notes for full details (See [Multi-wallet endpoint support](#multi-wallet-endpoint-support)).
 - `uptime` returns the total runtime of the `bitcoind` server since its last start (See [PR 10400](https://github.com/bitcoin/bitcoin/pull/10400)).
 
 Low-level RPC changes
 ---------------------
 
-- When using Bitcoin Core in multi-wallet mode, RPC requests for wallet methods must specify
-  the wallet that they're intended for. See [Multi-wallet support](#multi-wallet-support) for full details.
+- When using Bitcoin Knots in multi-wallet mode, RPC requests for wallet methods may specify
+  the wallet that they're intended for. See [Multi-wallet endpoint support](#multi-wallet-endpoint-support) for full details.
+
+- The `optintorbf` parameter for `createrawtransaction` and `fundrawtransaction` has been renamed to `replaceable` to match `bumpfee`.
 
 - The new database model no longer stores information about transaction
   versions of unspent outputs (See [Performance improvements](#performance-improvements)). This means that:
@@ -206,78 +187,45 @@ Low-level RPC changes
 
 - `fundrawtransaction` no longer accepts a `reserveChangeKey` option. This option used to allow RPC users to fund a raw transaction using an key from the keypool for the change address without removing it from the available keys in the keypool. The key could then be re-used for a `getnewaddress` call, which could potentially result in confusing or dangerous behaviour (See [PR 10784](https://github.com/bitcoin/bitcoin/pull/10784)).
 
-- `estimatepriority` and `estimatesmartpriority` have been removed. See [Removal of Coin Age Priority](#removal-of-coin-age-priority).
-
-- The `listunspent` RPC now takes a `query_options` argument (see [PR 8952](https://github.com/bitcoin/bitcoin/pull/8952)), which is a JSON object
-  containing one or more of the following members:
-  - `minimumAmount` - a number specifying the minimum value of each UTXO
-  - `maximumAmount` - a number specifying the maximum value of each UTXO
-  - `maximumCount` - a number specifying the minimum number of UTXOs
-  - `minimumSumAmount` - a number specifying the minimum sum value of all UTXOs
-
-- The `getmempoolancestors`, `getmempooldescendants`, `getmempoolentry` and `getrawmempool` RPCs no longer return `startingpriority` and `currentpriority`. See [Removal of Coin Age Priority](#removal-of-coin-age-priority).
-
-- The `dumpwallet` RPC now returns the full absolute path to the dumped wallet. It
-  used to return no value, even if successful (See [PR 9740](https://github.com/bitcoin/bitcoin/pull/9740)).
+- `estimatepriority` and `estimatesmartpriority` have been removed. Estimating coin age priority is no longer supported.
 
 - In the `getpeerinfo` RPC, the return object for each peer now returns an `addrbind` member, which contains the ip address and port of the connection to the peer. This is in addition to the `addrlocal` member which contains the ip address and port of the local node as reported by the peer (See [PR 10478](https://github.com/bitcoin/bitcoin/pull/10478)).
-
-- The `disconnectnode` RPC can now disconnect a node specified by node ID (as well as by IP address/port). To disconnect a node based on node ID, call the RPC with the new `nodeid` argument (See [PR 10143](https://github.com/bitcoin/bitcoin/pull/10143)).
-
-- The second argument in `prioritisetransaction` has been renamed from `priority_delta` to `dummy` since Bitcoin Core no longer has a concept of coin age priority. The `dummy` argument has no functional effect, but is retained for positional argument compatibility. See [Removal of Coin Age Priority](#removal-of-coin-age-priority).
 
 - The `resendwallettransactions` RPC throws an error if the `-walletbroadcast` option is set to false (See [PR 10995](https://github.com/bitcoin/bitcoin/pull/10995)).
 
 - The second argument in the `submitblock` RPC argument has been renamed from `parameters` to `dummy`. This argument never had any effect, and the renaming is simply to communicate this fact to the user (See [PR 10191](https://github.com/bitcoin/bitcoin/pull/10191))
   (Clients should, however, use positional arguments for `submitblock` in order to be compatible with BIP 22.)
 
-- The `verbose` argument of `getblock` has been renamed to `verbosity` and now takes an integer from 0 to 2. Verbose level 0 is equivalent to `verbose=false`. Verbose level 1 is equivalent to `verbose=true`. Verbose level 2 will give the full transaction details of each transaction in the output as given by `getrawtransaction`. The old behavior of using the `verbose` named argument and a boolean value is still maintained for compatibility.
+Low-level p2p changes
+---------------------
 
-- Error codes have been updated to be more accurate for the following error cases (See [PR 9853](https://github.com/bitcoin/bitcoin/pull/9853)):
-  - `getblock` now returns RPC_MISC_ERROR if the block can't be found on disk (for
-  example if the block has been pruned). Previously returned RPC_INTERNAL_ERROR.
-  - `pruneblockchain` now returns RPC_MISC_ERROR if the blocks cannot be pruned
-  because the node is not in pruned mode. Previously returned RPC_METHOD_NOT_FOUND.
-  - `pruneblockchain` now returns RPC_INVALID_PARAMETER if the blocks cannot be pruned
-  because the supplied timestamp is too late. Previously returned RPC_INTERNAL_ERROR.
-  - `pruneblockchain` now returns RPC_MISC_ERROR if the blocks cannot be pruned
-  because the blockchain is too short. Previously returned RPC_INTERNAL_ERROR.
-  - `setban` now returns RPC_CLIENT_INVALID_IP_OR_SUBNET if the supplied IP address
-  or subnet is invalid. Previously returned RPC_CLIENT_NODE_ALREADY_ADDED.
-  - `setban` now returns RPC_CLIENT_INVALID_IP_OR_SUBNET if the user tries to unban
-  a node that has not previously been banned. Previously returned RPC_MISC_ERROR.
-  - `removeprunedfunds` now returns RPC_WALLET_ERROR if `bitcoind` is unable to remove
-  the transaction. Previously returned RPC_INTERNAL_ERROR.
-  - `removeprunedfunds` now returns RPC_INVALID_PARAMETER if the transaction does not
-  exist in the wallet. Previously returned RPC_INTERNAL_ERROR.
-  - `fundrawtransaction` now returns RPC_INVALID_ADDRESS_OR_KEY if an invalid change
-  address is provided. Previously returned RPC_INVALID_PARAMETER.
-  - `fundrawtransaction` now returns RPC_WALLET_ERROR if `bitcoind` is unable to create
-  the transaction. The error message provides further details. Previously returned
-  RPC_INTERNAL_ERROR.
-  - `bumpfee` now returns RPC_INVALID_PARAMETER if the provided transaction has
-  descendants in the wallet. Previously returned RPC_MISC_ERROR.
-  - `bumpfee` now returns RPC_INVALID_PARAMETER if the provided transaction has
-  descendants in the mempool. Previously returned RPC_MISC_ERROR.
-  - `bumpfee` now returns RPC_WALLET_ERROR if the provided transaction has
-  has been mined or conflicts with a mined transaction. Previously returned
-  RPC_INVALID_ADDRESS_OR_KEY.
-  - `bumpfee` now returns RPC_WALLET_ERROR if the provided transaction is not
-  BIP 125 replaceable. Previously returned RPC_INVALID_ADDRESS_OR_KEY.
-  - `bumpfee` now returns RPC_WALLET_ERROR if the provided transaction has already
-  been bumped by a different transaction. Previously returned RPC_INVALID_REQUEST.
-  - `bumpfee` now returns RPC_WALLET_ERROR if the provided transaction contains
-  inputs which don't belong to this wallet. Previously returned RPC_INVALID_ADDRESS_OR_KEY.
-  - `bumpfee` now returns RPC_WALLET_ERROR if the provided transaction has multiple change
-  outputs. Previously returned RPC_MISC_ERROR.
-  - `bumpfee` now returns RPC_WALLET_ERROR if the provided transaction has no change
-  output. Previously returned RPC_MISC_ERROR.
-  - `bumpfee` now returns RPC_WALLET_ERROR if the fee is too high. Previously returned
-  RPC_MISC_ERROR.
-  - `bumpfee` now returns RPC_WALLET_ERROR if the fee is too low. Previously returned
-  RPC_MISC_ERROR.
-  - `bumpfee` now returns RPC_WALLET_ERROR if the change output is too small to bump the
-  fee. Previously returned RPC_MISC_ERROR.
+TODO: MSG_FILTERED_WITNESS_BLOCK
+
+0.15.0 Change log
+=================
+
+...
+
+AcceptToMemoryPool: Replace fLimitFree[=false] with rejectmsg_gratis in ignore_rejects
+AcceptToMemoryPool: Standardise rejection reason format
+Add a new checkpoint at block 481,824
+ArgsManager: ForceSetArg with int64_t
+Bugfix: Use testnet RequireStandard for -acceptnonstdtxn default
+Bump minimum Windows version to Vista
+CTxMemPool::check: Grab chainActive.Height() internally
+CValidationInterface: ValidationInterfaceUnregistering, called when being unregistered
+Handle MSG_FILTERED_WITNESS_BLOCK messages
+Move Win32 defines to configure.ac to ensure they are globally defined
+Move coin-age priority logic to its own file
+QA: Functional test for sweepprivkeys
+QA: prioritise_transaction: Reduce unnecessary change in variable names
+RPC: prioritisetransaction: Make both deltas optional
+Trivial: Replace AllowFree with MINIMUM_TX_PRIORITY
+coin_age_priority: Ensure nPackagesSelected and nDescendantsUpdated get updated for priority-mined transactions
+coin_age_priority: Move priority calculation code off non-policy objects
+coin_age_priority: Refactor TestForBlock to use TestPackage & TestPackageTransactions
+utilioprio: Add Windows support as ioprio_set_file_idle
+wallet: Key origin refactoring
 
 Credits
 =======
@@ -307,6 +255,7 @@ Thanks to everyone who directly contributed to this release:
 - Daniel Cousens
 - darksh1ne
 - Dimitris Tsapakidis
+- Eric Lombrozo
 - Eric Shaw
 - Evan Klitzke
 - fanquake
